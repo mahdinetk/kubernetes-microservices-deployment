@@ -1,0 +1,64 @@
+services:
+
+  postgres:
+    image: postgres:17
+
+    environment:
+      POSTGRES_DB: microservices_db
+      POSTGRES_USER: app 
+      POSTGRES_PASSWORD: 123 
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+    ports:
+      - "5432:5432"
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d microservices_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+  user-data-service:
+    build:
+      context: ./backend/user_data_service
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+  user-list-service:
+    build:
+      context: ./backend/user_list_service
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+  gateway:
+    build:
+      context: ./backend/gateway
+    
+    depends_on:
+      - user-data-service
+      - user-list-service
+
+
+  frontend:
+    build:
+      context: ./frontend
+
+    ports:
+      - "80:80"
+
+    depends_on:
+      - gateway
+
+
+volumes:
+  postgres_data:

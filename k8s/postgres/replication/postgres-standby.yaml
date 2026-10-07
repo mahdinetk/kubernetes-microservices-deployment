@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-standby
+  namespace: microservices
+
+spec:
+  serviceName: postgres-standby
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: postgres-standby
+
+  template:
+    metadata:
+      labels:
+        app: postgres-standby
+
+    spec:
+      initContainers:
+        - name: clone-primary
+          image: postgres:17
+
+          env:
+            - name: PGPASSWORD
+              value: "123"
+
+          command:
+            - sh
+            - -c
+            - |
+              rm -rf /var/lib/postgresql/data/*
+              pg_basebackup \
+                -h postgres \
+                -U replicator \
+                -D /var/lib/postgresql/data \
+                -Fp \
+                -Xs \
+                -P \
+                -R
+
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+
+      containers:
+        - name: postgres
+          image: postgres:17
+
+          ports:
+            - containerPort: 5432
+
+          env:
+            - name: POSTGRES_DB
+              value: "microservices_db"
+
+            - name: POSTGRES_USER
+              value: "app"
+
+            - name: POSTGRES_PASSWORD
+              value: "123"
+
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+
+      spec:
+        accessModes:
+          - ReadWriteOnce
+
+        resources:
+          requests:
+            storage: 1Gi
