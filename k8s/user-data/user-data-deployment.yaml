@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-data-service
+  namespace: microservices
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: user-data-service
+
+  template:
+    metadata:
+      labels:
+        app: user-data-service
+
+    spec:
+      containers:
+        - name: user-data-service
+          image: project-user-data-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8001
