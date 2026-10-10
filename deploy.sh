@@ -34,7 +34,7 @@ kubectl wait \
 echo "==> Creating database tables..."
 
 kubectl exec -i postgres-0 -n microservices -- \
-psql -U postgres -d microservices_db <<'SQL'
+psql -U app -d microservices_db <<'SQL'
 
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
