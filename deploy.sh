@@ -72,8 +72,8 @@ kubectl apply -f k8s/frontend/frontend-deployment.yaml
 kubectl apply -f k8s/frontend/frontend-service.yaml
 
 echo "==> Configuring PostgreSQL replication..."
-kubectl apply -f k8s/replication/postgres-config.yaml
-kubectl apply -f k8s/replication/postgres-standby.yaml
+kubectl apply -f k8s/postgres/replication/postgres-config.yaml
+kubectl apply -f k8s/postgres/replication/postgres-standby.yaml
 
 echo ""
 echo "======================================"
