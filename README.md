@@ -1,3 +1,33 @@
+# Kubernetes Microservices Deployment
+
+Project Overview
+
+This project is a containerized microservices application deployed on Kubernetes. It was developed as a practical DevOps learning project to understand how multiple services communicate, how applications are deployed and managed in a Kubernetes cluster, and how databases are integrated into a microservices architecture.
+
+The application provides basic user management functionality, including user registration, login, device information collection, and displaying a list of registered users.
+
+## Architecture
+
+The application consists of the following components:
+
+Frontend: HTML pages served by Nginx, providing the user interface for login, registration, and viewing users.
+
+Gateway: A FastAPI service that acts as the entry point for API requests and routes them to the appropriate backend microservice.
+
+User Data Service: Handles user-related operations, including registration and login.
+
+User List Service: Retrieves user information from the database and provides it to the frontend through the gateway.
+
+PostgreSQL: Stores user accounts and device information persistently.
+
+Request Flow
+
+User requests follow this general path:
+
+User → Nginx → Gateway → Backend Microservices → PostgreSQL
+
+The backend microservices communicate with PostgreSQL to store or retrieve application data. Kubernetes Services provide internal network connectivity between the application components.
+
 # Installation
 
 ## Requirements
