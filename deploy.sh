@@ -3,7 +3,6 @@
 set -e
 
 echo "==> Starting Minikube..."
-minikube config set driver docker
 minikube start
 
 echo "==> Creating Kubernetes namespace..."
