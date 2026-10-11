@@ -1,149 +1,170 @@
-<!DOCTYPE html>
 
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Users - Kubernetes Microservices</title>
 
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-<style>
-    * {
-        box-sizing: border-box;
-    }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+        }
 
-    body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: #f4f6f8;
-    }
+        .container {
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
 
-    .container {
-        max-width: 900px;
-        margin: 50px auto;
-        padding: 30px;
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    }
+        h1 {
+            margin-top: 0;
+        }
 
-    h1 {
-        margin-top: 0;
-    }
+        .device {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
 
-    .device {
-        background: #f8fafc;
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 30px;
-    }
+        .device h2 {
+            margin-top: 0;
+        }
 
-    .device h2 {
-        margin-top: 0;
-    }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
-    table {
-        width: 100%;
-        border-collapse: collapse;
-    }
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+            overflow-wrap: anywhere;
+        }
 
-    th,
-    td {
-        padding: 12px;
-        border-bottom: 1px solid #ddd;
-        text-align: left;
-    }
+        th {
+            background: #f1f5f9;
+        }
 
-    th {
-        background: #f1f5f9;
-    }
+        .message {
+            margin: 15px 0;
+            overflow-wrap: anywhere;
+        }
 
-    .message {
-        margin: 15px 0;
-    }
+        button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 5px;
+            background: #dc2626;
+            color: white;
+            cursor: pointer;
+        }
 
-    button {
-        padding: 10px 18px;
-        border: none;
-        border-radius: 5px;
-        background: #dc2626;
-        color: white;
-        cursor: pointer;
-    }
+        button:hover {
+            background: #b91c1c;
+        }
 
-    button:hover {
-        background: #b91c1c;
-    }
-</style>
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
 
+        @media (max-width: 600px) {
+            .container {
+                margin: 15px;
+                padding: 18px;
+            }
 
+            th,
+            td {
+                padding: 8px;
+                font-size: 14px;
+            }
+        }
+    </style>
 </head>
 
 <body>
 
 <div class="container">
 
+    <h1>Users</h1>
 
-<h1>Users</h1>
+    <div class="device">
+        <h2>Your Device</h2>
 
-<div class="device">
+        <p>
+            <strong>Browser:</strong>
+            <span id="browser"></span>
+        </p>
 
-    <h2>Your Device</h2>
+        <p>
+            <strong>Platform:</strong>
+            <span id="platform"></span>
+        </p>
 
-    <p>
-        <strong>Browser:</strong>
-        <span id="browser"></span>
-    </p>
+        <p>
+            <strong>Screen:</strong>
+            <span id="screen"></span>
+        </p>
 
-    <p>
-        <strong>Platform:</strong>
-        <span id="platform"></span>
-    </p>
+        <button id="saveDevice" type="button">
+            Save Device Information
+        </button>
 
-    <p>
-        <strong>Screen:</strong>
-        <span id="screen"></span>
-    </p>
+        <div
+            class="message"
+            id="deviceMessage"
+            role="status"
+            aria-live="polite"
+        ></div>
+    </div>
 
-    <button id="saveDevice">
-        Save Device Information
+    <h2>Registered Users</h2>
+
+    <div
+        class="message"
+        id="usersMessage"
+        role="status"
+        aria-live="polite"
+    >
+        Loading users...
+    </div>
+
+    <table id="usersTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Registered</th>
+            </tr>
+        </thead>
+
+        <tbody id="usersBody"></tbody>
+    </table>
+
+    <br>
+
+    <button id="logout" type="button">
+        Logout
     </button>
-
-    <div class="message" id="deviceMessage"></div>
-
-</div>
-
-<h2>Registered Users</h2>
-
-<div class="message" id="usersMessage">
-    Loading users...
-</div>
-
-<table id="usersTable">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Username</th>
-            <th>Registered</th>
-        </tr>
-    </thead>
-
-    <tbody id="usersBody">
-    </tbody>
-</table>
-
-<br>
-
-<button id="logout">
-    Logout
-</button>
-
 
 </div>
 
 <script>
-
-    // Collect basic device/browser information.
+    // Collect basic device and browser information.
     const deviceInfo = {
         user_agent: navigator.userAgent,
         platform: navigator.platform,
@@ -151,102 +172,205 @@
         screen_height: window.screen.height
     };
 
-    document.getElementById("browser").textContent = navigator.userAgent;
-    document.getElementById("platform").textContent = navigator.platform;
+    // Display device information.
+    document.getElementById("browser").textContent =
+        deviceInfo.user_agent;
+
+    document.getElementById("platform").textContent =
+        deviceInfo.platform;
+
     document.getElementById("screen").textContent =
-        `${window.screen.width} x ${window.screen.height}`;
+        `${deviceInfo.screen_width} x ${deviceInfo.screen_height}`;
 
+    // Convert API errors into readable messages.
+    function getErrorMessage(data) {
+        if (Array.isArray(data.detail)) {
+            return data.detail
+                .map(error => {
+                    const field = Array.isArray(error.loc)
+                        ? error.loc.join(".")
+                        : "";
 
-    // Save device information.
-    document.getElementById("saveDevice").addEventListener("click", async function() {
+                    const message = error.msg || "Invalid value";
 
-        const message = document.getElementById("deviceMessage");
-
-        try {
-
-            const response = await fetch("/api/user/device", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(deviceInfo)
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                message.textContent = "Device information saved.";
-            } else {
-                message.textContent =
-                    data.detail || "Could not save device information.";
-            }
-
-        } catch (error) {
-
-            console.error(error);
-
-            message.textContent =
-                "Could not connect to the server.";
+                    return field
+                        ? `${field}: ${message}`
+                        : message;
+                })
+                .join("; ");
         }
 
-    });
+        if (typeof data.detail === "string") {
+            return data.detail;
+        }
 
+        if (typeof data.message === "string") {
+            return data.message;
+        }
 
-    // Load users.
+        return "Request failed. Check the server logs.";
+    }
+
+    // Read and parse a JSON response safely.
+    async function readResponse(response) {
+        const text = await response.text();
+
+        let data;
+
+        try {
+            data = text ? JSON.parse(text) : {};
+        } catch {
+            data = {
+                detail: text || "The server returned an empty response."
+            };
+        }
+
+        if (!response.ok) {
+            throw new Error(getErrorMessage(data));
+        }
+
+        return data;
+    }
+
+    // Save device information.
+    document
+        .getElementById("saveDevice")
+        .addEventListener("click", async function () {
+            const button = this;
+            const message = document.getElementById("deviceMessage");
+
+            message.textContent = "";
+
+            // Prevent duplicate requests.
+            button.disabled = true;
+
+            try {
+                // Get the logged-in user.
+                const storedUser = localStorage.getItem("user");
+
+                if (!storedUser) {
+                    message.textContent =
+                        "Please log in before saving device information.";
+                    return;
+                }
+
+                let user;
+
+                try {
+                    user = JSON.parse(storedUser);
+                } catch {
+                    message.textContent =
+                        "Stored user information is invalid. Please log in again.";
+                    return;
+                }
+
+                // The API requires a valid user ID.
+                const userId = Number(user && user.id);
+
+                if (!Number.isInteger(userId) || userId <= 0) {
+                    message.textContent =
+                        "User ID is missing or invalid. Please log in again.";
+                    console.error("Invalid stored user object:", user);
+                    return;
+                }
+
+                // Include user_id and all required device fields.
+                const payload = {
+                    user_id: userId,
+                    ...deviceInfo
+                };
+
+                console.log("Sending device information:", payload);
+
+                const response = await fetch("/api/user/device", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await readResponse(response);
+
+                message.textContent =
+                    "Device information saved successfully.";
+
+                console.log("Device saved successfully:", data);
+
+            } catch (error) {
+                console.error("Save device error:", error);
+
+                message.textContent =
+                    error.message || "Could not connect to the server.";
+
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+    // Load registered users.
     async function loadUsers() {
-
         const message = document.getElementById("usersMessage");
         const usersBody = document.getElementById("usersBody");
 
+        message.textContent = "Loading users...";
+        usersBody.replaceChildren();
+
         try {
-
             const response = await fetch("/api/users");
+            const data = await readResponse(response);
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.detail || "Failed to load users.");
+            if (!Array.isArray(data)) {
+                throw new Error(
+                    "Unexpected response from the users API."
+                );
             }
 
-            usersBody.innerHTML = "";
+            usersBody.replaceChildren();
 
             data.forEach(user => {
-
                 const row = document.createElement("tr");
 
-                row.innerHTML = `
-                    <td>${user.id}</td>
-                    <td>${user.username}</td>
-                    <td>${user.created_at || "-"}</td>
-                `;
+                const idCell = document.createElement("td");
+                idCell.textContent = user.id ?? "-";
+
+                const usernameCell = document.createElement("td");
+                usernameCell.textContent = user.username ?? "-";
+
+                const registeredCell = document.createElement("td");
+                registeredCell.textContent = user.created_at ?? "-";
+
+                row.append(
+                    idCell,
+                    usernameCell,
+                    registeredCell
+                );
 
                 usersBody.appendChild(row);
             });
 
-            message.textContent = "";
+            message.textContent = data.length === 0
+                ? "No registered users found."
+                : "";
 
         } catch (error) {
-
-            console.error(error);
+            console.error("Load users error:", error);
 
             message.textContent =
-                "Could not load users.";
+                `Could not load users: ${error.message}`;
         }
     }
 
+    // Log out.
+    document
+        .getElementById("logout")
+        .addEventListener("click", function () {
+            localStorage.removeItem("user");
+            window.location.href = "index.html";
+        });
 
-    // Logout.
-    document.getElementById("logout").addEventListener("click", function() {
-
-        localStorage.removeItem("user");
-
-        window.location.href = "index.html";
-
-    });
-
-
+    // Initialize the page.
     loadUsers();
-
 </script>
 
 </body>
