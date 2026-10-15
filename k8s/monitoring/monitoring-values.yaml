@@ -1,0 +1,63 @@
+alertmanager:
+  alertmanagerSpec:
+    replicas: 1
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 25m
+        memory: 64Mi
+
+grafana:
+  grafana.ini:
+    smtp:
+      enabled: true
+      host: smtp.gmail.com:587
+      from_address: mhd.kzm.1387@gmail.com
+      from_name: Grafana Alerts
+      startTLS_policy: MandatoryStartTLS
+
+  smtp:
+    existingSecret: grafana-smtp
+    userKey: user
+    passwordKey: password
+  replicas: 1
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: standard
+    accessModes:
+      - ReadWriteOnce
+    size: 2Gi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+prometheus:
+  prometheusSpec:
+    replicas: 1
+
+    retention: 2d
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 5Gi
+
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 512Mi
