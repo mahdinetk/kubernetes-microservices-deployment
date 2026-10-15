@@ -20,7 +20,7 @@ User List Service: Retrieves user information from the database and provides it 
 
 PostgreSQL: Stores user accounts and device information persistently.
 
-Request Flow
+### Request Flow
 
 User requests follow this general path:
 
@@ -82,6 +82,33 @@ The database starts with an empty `users` and `devices` table. Any data created 
 ```bash
 minikube service frontend -n microservices
 ```
+
+## API Documentation (Swagger)
+
+The backend API is built with FastAPI, which provides interactive API documentation through Swagger UI.
+
+To access the Swagger documentation, forward the gateway service port:
+
+```bash
+kubectl port-forward -n microservices svc/gateway 8000:8000
+```
+
+Open the following URL in your browser:
+
+http://localhost:8000/docs
+
+Swagger UI allows you to explore available API endpoints and test requests interactively.
+
+## Monitoring
+
+The project uses Prometheus and Grafana to monitor Kubernetes infrastructure and application availability. Blackbox Exporter is used to check HTTP endpoint availability.
+
+Monitoring configurations are stored in the repository, including:
+
+- **Grafana dashboards:** JSON files for visualizing monitoring metrics.
+- **Alert rules:** YAML files defining conditions that require attention.
+
+These configurations make the monitoring setup easier to maintain, reproduce, and extend.
 
 ## Stop the project
 
