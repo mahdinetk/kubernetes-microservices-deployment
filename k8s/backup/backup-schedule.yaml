@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-runner
+  namespace: microservices
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backup-runner
+  namespace: microservices
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    resourceNames: ["postgres-0"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    resourceNames: ["postgres-0"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backup-runner
+  namespace: microservices
+subjects:
+  - kind: ServiceAccount
+    name: backup-runner
+    namespace: microservices
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: backup-runner
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-full-backup
+  namespace: microservices
+spec:
+  schedule: "0 2 * * 0"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      template:
+        spec:
+          serviceAccountName: backup-runner
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: postgres17-pgbackrest:local
+              imagePullPolicy: Never
+              command: ["/bin/sh", "-ec"]
+              args:
+                - |
+                  kubectl exec -n microservices postgres-0 -- \
+                    runuser -u postgres -- \
+                    pgbackrest --stanza=main --type=full backup
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-incremental-backup
+  namespace: microservices
+spec:
+  schedule: "0 2 * * 1-6"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      template:
+        spec:
+          serviceAccountName: backup-runner
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: postgres17-pgbackrest:local
+              imagePullPolicy: Never
+              command: ["/bin/sh", "-ec"]
+              args:
+                - |
+                  kubectl exec -n microservices postgres-0 -- \
+                    runuser -u postgres -- \
+                    pgbackrest --stanza=main --type=incr backup
