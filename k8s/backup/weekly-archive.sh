@@ -1,16 +1,30 @@
-
 #!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-BACKUP_ROOT="$HOME/kubernetes-backups"
-WEEKLY_ROOT="$BACKUP_ROOT/weekly"
-LOG="$BACKUP_ROOT/weekly-archive.log"
+NAMESPACE="microservices"
+POD="postgres-0"
+REMOTE_USER="pgbackrest"
+REMOTE_HOST="10.0.1.25"
 
-mkdir -p "$BACKUP_ROOT" "$WEEKLY_ROOT"
-chmod 700 "$BACKUP_ROOT" "$WEEKLY_ROOT"
+kubectl get namespace "$NAMESPACE" >/dev/null
+kubectl exec -n "$NAMESPACE" "$POD" -- true >/dev/null
+
+echo "Creating weekly archive on Debian..."
+
+kubectl exec -i -n "$NAMESPACE" "$POD" -- \
+    ssh -o BatchMode=yes "$REMOTE_USER@$REMOTE_HOST" 'bash -s' <<'REMOTE'
+set -Eeuo pipefail
+umask 077
+
+BACKUP_ROOT="$HOME/kubernetes-backups"
+DAILY_ROOT="$BACKUP_ROOT/daily"
+WEEKLY_ROOT="$BACKUP_ROOT/weekly"
+
+mkdir -p "$DAILY_ROOT" "$WEEKLY_ROOT"
+chmod 700 "$BACKUP_ROOT" "$DAILY_ROOT" "$WEEKLY_ROOT"
 
 exec 9>"$BACKUP_ROOT/.weekly.lock"
 flock -n 9 || {
@@ -18,73 +32,62 @@ flock -n 9 || {
     exit 1
 }
 
-# Select the newest completed daily snapshot.
-LATEST=""
-while IFS= read -r candidate; do
-    if [[ -f "$candidate/SHA256SUMS" ]] &&
-       (cd "$candidate" && sha256sum -c SHA256SUMS >/dev/null 2>&1); then
-        LATEST="$candidate"
-        break
-    fi
-done < <(
-    find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d \
-        ! -name weekly \
-        ! -name 'recovery-test-*' \
-        -printf '%T@ %p\n' |
-    sort -rn | cut -d' ' -f2-
-)
+LATEST="$(
+    find "$DAILY_ROOT" -maxdepth 1 -type f \
+        -name 'config-*.tar.gz' -printf '%T@ %p\n' |
+        sort -rn |
+        head -n 1 |
+        cut -d' ' -f2-
+)"
 
 if [[ -z "$LATEST" ]]; then
-    echo "ERROR: No valid daily backup found." | tee -a "$LOG"
+    echo "ERROR: No daily archive found on Debian."
     exit 1
 fi
 
+# Verify the daily archive before copying it.
+(
+    cd "$DAILY_ROOT"
+    sha256sum -c "$(basename "$LATEST").sha256"
+    tar -tzf "$LATEST" >/dev/null
+)
+
 STAMP="$(date +%Y%m%d-%H%M%S)"
-TEMP="$WEEKLY_ROOT/.weekly-$STAMP.tmp"
 ARCHIVE="$WEEKLY_ROOT/config-$STAMP.tar.gz"
 
-mkdir "$TEMP"
-trap 'rm -rf "$TEMP"' EXIT
-
-# Store a self-contained copy of the selected configuration snapshot.
-cp -a "$LATEST" "$TEMP/snapshot"
-
-tar -czf "$ARCHIVE.tmp" -C "$TEMP" snapshot
+cp -- "$LATEST" "$ARCHIVE.tmp"
 mv "$ARCHIVE.tmp" "$ARCHIVE"
-sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
 
-# Verify the archive before removing any old backups.
-tar -tzf "$ARCHIVE" >/dev/null
-sha256sum -c "$ARCHIVE.sha256"
+(
+    cd "$WEEKLY_ROOT"
+    sha256sum "$(basename "$ARCHIVE")" \
+        > "$(basename "$ARCHIVE").sha256"
+    sha256sum -c "$(basename "$ARCHIVE").sha256"
+    tar -tzf "$ARCHIVE" >/dev/null
+)
 
-rm -rf "$TEMP"
-trap - EXIT
-
-# Retain the four newest weekly archives and their checksum files.
+# Retain the four newest weekly archives.
 find "$WEEKLY_ROOT" -maxdepth 1 -type f \
     -name 'config-*.tar.gz' -printf '%T@ %p\n' |
-    sort -rn | tail -n +5 | cut -d' ' -f2- |
+    sort -rn |
+    tail -n +5 |
+    cut -d' ' -f2- |
     while IFS= read -r old; do
-        [[ -n "$old" ]] || continue
-        rm -f -- "$old" "$old.sha256"
+        [[ -n "$old" ]] && rm -f -- "$old" "$old.sha256"
     done
 
-# Retain the seven newest daily snapshot directories.
-find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d \
-    ! -name weekly \
-    ! -name 'recovery-test-*' \
-    -printf '%T@ %p\n' |
-    sort -rn | tail -n +8 | cut -d' ' -f2- |
+# Also enforce seven daily archives.
+find "$DAILY_ROOT" -maxdepth 1 -type f \
+    -name 'config-*.tar.gz' -printf '%T@ %p\n' |
+    sort -rn |
+    tail -n +8 |
+    cut -d' ' -f2- |
     while IFS= read -r old; do
-        [[ -n "$old" ]] || continue
-        case "$old" in
-            "$BACKUP_ROOT"/*)
-                rm -rf -- "$old"
-                ;;
-        esac
+        [[ -n "$old" ]] && rm -f -- "$old" "$old.sha256"
     done
 
-echo "Weekly archive created: $ARCHIVE" | tee -a "$LOG"
-echo "Source snapshot: $LATEST" | tee -a "$LOG"
-echo "Retention completed." | tee -a "$LOG"
+echo "Weekly archive created: $ARCHIVE"
+ls -lh "$ARCHIVE" "$ARCHIVE.sha256"
+REMOTE
 
+echo "Weekly archive completed on Debian."

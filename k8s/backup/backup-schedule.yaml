@@ -61,8 +61,7 @@ spec:
               args:
                 - |
                   kubectl exec -n microservices postgres-0 -- \
-                    runuser -u postgres -- \
-                    pgbackrest --stanza=main --type=full backup
+                    pgbackrest --stanza=main --repo=2 --type=full backup
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -92,5 +91,4 @@ spec:
               args:
                 - |
                   kubectl exec -n microservices postgres-0 -- \
-                    runuser -u postgres -- \
-                    pgbackrest --stanza=main --type=incr backup
+                    pgbackrest --stanza=main --repo=2 --type=incr backup
