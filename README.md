@@ -129,3 +129,34 @@ minikube delete
 ```
 
 > **Warning:** deleting the namespace or Minikube cluster can delete the project's Kubernetes resources and persistent data.
+
+
+
+## Backup and Disaster Recovery
+
+The project uses Bash scripts for Kubernetes configuration backups and pgBackRest for PostgreSQL backups in ```k8s/backup``` directory.
+
+### Configuration
+
+- **Backup server:** Update the server IP and connection settings in the backup scripts and pgBackRest configuration to match your environment.
+- **Kubernetes resources:** Backup CronJobs, PVCs, and related resources must be created manually using the provided configuration files or commands.
+- **Backup storage:** Configuration archives and PostgreSQL backups are stored on the configured backup server.
+
+### Backup Schedule
+
+| Backup | Schedule |
+|---|---|
+| Kubernetes configuration | Daily |
+| Configuration archive | Weekly |
+| PostgreSQL full backup | Sunday, 02:00 UTC |
+| PostgreSQL incremental backup | Monday–Saturday, 02:00 UTC |
+
+Schedules apply only after the relevant CronJobs are created and configured.
+
+### Recovery
+
+1. Restore Kubernetes configuration and project files.
+2. Recreate required Kubernetes resources, including PVCs and CronJobs.
+3. Restore PostgreSQL data separately using pgBackRest.
+
+**Note:** Update environment-specific settings before deployment. Configuration archives do not replace PostgreSQL database backups.
