@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 set -e
@@ -7,6 +8,18 @@ minikube start
 
 echo "==> Creating Kubernetes namespace..."
 kubectl apply -f k8s/namespace.yaml
+
+echo "==> Installing Traefik..."
+helm repo add traefik https://traefik.github.io/charts --force-update
+helm repo update
+
+helm upgrade --install traefik traefik/traefik \
+  --version 42.1.3 \
+  --namespace traefik \
+  --create-namespace \
+  --values k8s/traefik/values.yaml
+
+kubectl rollout status deployment/traefik -n traefik --timeout=180s
 
 echo "==> Building Docker images..."
 docker build -t project-frontend:latest ./frontend
@@ -32,7 +45,6 @@ kubectl wait \
   --timeout=120s
 
 echo "==> Creating database tables..."
-
 kubectl exec -i postgres-0 -n microservices -- \
 psql -U app -d microservices_db <<'SQL'
 
@@ -75,12 +87,40 @@ echo "==> Configuring PostgreSQL replication..."
 kubectl apply -f k8s/postgres/replication/postgres-config.yaml
 kubectl apply -f k8s/postgres/replication/postgres-standby.yaml
 
+echo "==> Configuring Traefik TLS..."
+mkdir -p k8s/traefik/certs
+
+if [ ! -f k8s/traefik/certs/app.local.crt ] || \
+   [ ! -f k8s/traefik/certs/app.local.key ]; then
+    openssl req -x509 -nodes -days 365 \
+      -newkey rsa:2048 \
+      -keyout k8s/traefik/certs/app.local.key \
+      -out k8s/traefik/certs/app.local.crt \
+      -subj "/CN=app.local" \
+      -addext "subjectAltName=DNS:app.local"
+fi
+
+kubectl create secret tls app-local-tls \
+  --cert=k8s/traefik/certs/app.local.crt \
+  --key=k8s/traefik/certs/app.local.key \
+  -n microservices \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+echo "==> Applying Traefik routing configuration..."
+kubectl apply -f k8s/traefik/middleware.yaml
+kubectl apply -f k8s/traefik/ingressroute.yaml
+kubectl apply -f k8s/traefik/api-ingressroute.yaml
+
 echo ""
 echo "======================================"
 echo "Deployment completed successfully!"
 echo "======================================"
 echo ""
-echo "Open the application with:"
+echo "Add this entry to /etc/hosts:"
+echo "127.0.0.1 app.local"
 echo ""
-echo "    minikube service frontend -n microservices"
+echo "Run this command to access the application:"
+echo "sudo env KUBECONFIG=\$HOME/.kube/config kubectl port-forward --address 127.0.0.1 -n traefik svc/traefik 80:80 443:443"
 echo ""
+echo "Then open: https://app.local"
+
