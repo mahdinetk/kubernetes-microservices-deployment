@@ -1,0 +1,54 @@
+deployment:
+  replicas: 1
+
+# Keep the installation lightweight for Minikube.
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+# Expose Traefik through a NodePort.
+service:
+  type: NodePort
+
+ports:
+  web:
+    port: 8000
+    exposedPort: 80
+    nodePort: 30080
+    expose:
+      default: true
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+
+  websecure:
+    port: 8443
+    exposedPort: 443
+    nodePort: 31450
+    expose:
+      default: true
+
+# Use Traefik's Kubernetes CRD provider.
+providers:
+  kubernetesCRD:
+    enabled: true
+  kubernetesIngress:
+    enabled: false
+
+# Enable HTTP request access logs
+accessLog:
+  enabled: true
+  format: common
+
+# Keep dashboard available internally for now.
+api:
+  dashboard: true
+  insecure: false
+

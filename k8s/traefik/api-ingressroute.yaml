@@ -1,0 +1,33 @@
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: api-route
+  namespace: microservices
+
+spec:
+  entryPoints:
+    - websecure
+
+  routes:
+    - match: Host(`app.local`) && PathPrefix(`/api`)
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: security-headers
+      services:
+        - name: gateway
+          port: 8000
+
+    - match: Host(`app.local`) && (Path(`/docs`) || Path(`/openapi.json`))
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: security-headers
+      services:
+        - name: gateway
+          port: 8000
+
+  tls:
+    secretName: app-local-tls
+
